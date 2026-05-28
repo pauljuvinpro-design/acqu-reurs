@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Test connexion</title>
+<style>
+body{font-family:sans-serif;padding:30px;max-width:500px;margin:0 auto}
+button{display:block;width:100%;padding:14px;font-size:15px;margin-bottom:12px;border:none;border-radius:10px;cursor:pointer;font-weight:600}
+.btn-blue{background:#007AFF;color:#fff}
+.btn-green{background:#34C759;color:#fff}
+.btn-red{background:#FF3B30;color:#fff}
+.result{padding:14px;border-radius:10px;font-size:14px;margin-top:8px;display:none}
+.ok{background:#E8F8EC;color:#1A6B2E}
+.err{background:#FFEBEA;color:#8B1A14}
+</style>
+</head>
+<body>
+<h2 style="margin-bottom:20px">🔌 Test connexion Google Sheets</h2>
+
+<button class="btn-blue" onclick="testerLecture()">📖 Test 1 — Lire les données</button>
+<div id="r1" class="result"></div>
+
+<button class="btn-green" onclick="testerEcriture()">✍️ Test 2 — Écrire un acquéreur test</button>
+<div id="r2" class="result"></div>
+
+<button class="btn-red" onclick="testerSuppression()">🗑️ Test 3 — Supprimer l'acquéreur test</button>
+<div id="r3" class="result"></div>
+
+<script>
+const URL = "https://script.google.com/macros/s/AKfycbw13wV_Z5cU5wYY7FbnbDhgPomxEFp1-ynMb9TOZaUIaKmI71fig1al3iRD24L1Q7Xcfg/exec";
+const PROXY = "https://corsproxy.io/?";
+
+async function apiFetch(url) {
+  try {
+    const r = await fetch(PROXY + encodeURIComponent(url));
+    const j = await r.json();
+    if (j.success !== undefined) return j;
+  } catch(e) {}
+  try {
+    const r = await fetch(url, {redirect:'follow'});
+    const j = await r.json();
+    if (j.success !== undefined) return j;
+  } catch(e) {}
+  return null;
+}
+
+async function apiPost(body) {
+  try {
+    const r = await fetch(PROXY + encodeURIComponent(URL), {method:'POST', body:JSON.stringify(body)});
+    const j = await r.json();
+    if (j.success !== undefined) return j;
+  } catch(e) {}
+  try {
+    const r = await fetch(URL, {method:'POST', body:JSON.stringify(body), redirect:'follow'});
+    const j = await r.json();
+    if (j.success !== undefined) return j;
+  } catch(e) {}
+  return null;
+}
+
+function show(id, ok, msg) {
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.className = 'result ' + (ok ? 'ok' : 'err');
+  el.textContent = (ok ? '✅ ' : '❌ ') + msg;
+}
+
+async function testerLecture() {
+  show('r1', true, 'Chargement...');
+  const r = await apiFetch(URL);
+  if (r && r.success) {
+    show('r1', true, 'Lecture OK — ' + (r.data ? r.data.length : 0) + ' acquéreur(s) trouvé(s)');
+  } else {
+    show('r1', false, 'Échec de la lecture — CORS bloqué');
+  }
+}
+
+async function testerEcriture() {
+  show('r2', true, 'Écriture en cours...');
+  const row = ['TEST','SUPPRESSION','0600000000','test@test.fr',30,'11e','Indifférent',2,1,'Non','Non',0,'','Non','WhatsApp',0,'','Non','',300000,'Crédit',0,'','Non','Non','Actif','Test',new Date().toISOString().split('T')[0],new Date().toISOString().split('T')[0]];
+  const r = await apiPost({action:'add', row});
+  if (r && r.success) {
+    show('r2', true, 'Écriture OK — acquéreur TEST ajouté dans le Sheets !');
+  } else {
+    show('r2', false, 'Échec de l\'écriture — CORS bloqué sur POST');
+  }
+}
+
+async function testerSuppression() {
+  show('r3', true, 'Suppression en cours...');
+  const r = await apiPost({action:'supprimer', nom:'TEST', prenom:'SUPPRESSION'});
+  if (r && r.success) {
+    show('r3', true, 'Suppression OK — ligne TEST retirée du Sheets !');
+  } else {
+    show('r3', false, 'Échec de la suppression');
+  }
+}
+</script>
+</body>
+</html>
